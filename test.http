@@ -1,0 +1,3 @@
+### Request to predict endpoint
+GET http://localhost:5000/predict?age=29
+Accept: application/json
