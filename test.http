@@ -1,3 +1,23 @@
-### Request to predict endpoint
-GET http://localhost:5000/predict?age=29
+# ------------------------- Q1 -------------------------
+
+### Logistic Regression Prediction
+GET http://localhost:5000/predict/logistic_regression?pclass=3&sex=male&age=29&sibsp=1&parch=0&fare=7.25&embarked=S
+Accept: application/json
+
+### Random Forest Prediction
+GET http://localhost:5000/predict/random_forest?pclass=1&sex=female&age=38&sibsp=1&parch=0&fare=71.2833&embarked=C
+Accept: application/json
+
+### SVM Prediction
+GET http://localhost:5000/predict/svm?pclass=3&sex=female&age=26&sibsp=0&parch=0&fare=7.925&embarked=S
+Accept: application/json
+
+# ------------------------- Q2 -------------------------
+
+### Consensus Prediction 1
+GET http://localhost:5000/predict/consensus?pclass=3&sex=male&age=22&sibsp=1&parch=0&fare=7.25&embarked=S
+Accept: application/json
+
+### Consensus Prediction 2
+GET http://localhost:5000/predict/consensus?pclass=3&sex=female&age=26&sibsp=0&parch=0&fare=7.925&embarked=S
 Accept: application/json

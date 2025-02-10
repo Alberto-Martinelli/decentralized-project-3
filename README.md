@@ -24,9 +24,9 @@ This stage illustrates the creation of a distributed prediction system in a trus
 
 ### Introducing Consensus with Slashing Mechanism
 
-**Q4:** Introduce a weighting system to refine the meta-model's predictions. Weights, ranging from 0 to 1, are adjusted with each prediction batch to reflect the accuracy of individual models relative to the group consensus.
+**Q3:** Introduce a weighting system to refine the meta-model's predictions. Weights, ranging from 0 to 1, are adjusted with each prediction batch to reflect the accuracy of individual models relative to the group consensus.
 
-**Q5:** Implement a proof-of-stake consensus mechanism with a slashing protocol. Models must make an initial deposit (e.g., 1000 euros) upon registration to participate. This deposit serves as a security measure, ensuring participants' commitment to the network's integrity.
+**Q4:** Implement a proof-of-stake consensus mechanism with a slashing protocol. Models must make an initial deposit (e.g., 1000 euros) upon registration to participate. This deposit serves as a security measure, ensuring participants' commitment to the network's integrity.
 
 - Implement penalties (slashing) for actions that undermine network accuracy or trustworthiness. For example, consistently inaccurate predictions may result in a loss of deposit.
 - This protocol discourages adverse behaviors while encouraging contributions of accurate, reliable predictions.
