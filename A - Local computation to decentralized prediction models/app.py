@@ -1,21 +1,31 @@
 # pip install flask scikit-learn pandas joblib
+import json
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
 import pandas as pd
+import os
 
-# Load trained models and preprocessing pipeline
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
 models = {
-    "logistic_regression": joblib.load("logreg_model.pkl"),
-    "random_forest": joblib.load("rf_model.pkl"),
-    "svm": joblib.load("svm_model.pkl")
+    "logistic_regression": joblib.load(os.path.join(BASE_DIR, "data", "logreg_model.pkl")),
+    "random_forest": joblib.load(os.path.join(BASE_DIR, "data", "rf_model.pkl")),
+    "svm": joblib.load(os.path.join(BASE_DIR, "data", "svm_model.pkl"))
 }
-preprocessor = joblib.load("preprocessor.pkl")  # Load the preprocessing pipeline
+preprocessor = joblib.load(os.path.join(BASE_DIR, "data", "preprocessor.pkl"))
+
+
+try:
+    with open(os.path.join(BASE_DIR, "data","model_weights.json"), "r") as f:
+        weights = np.array(list(json.load(f).values()))
+except FileNotFoundError:
+    weights = np.array([1/3, 1/3, 1/3])  
+
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Define model prediction function
+# ----------------------- Q1: Define model prediction function -------------------------------------
 def predict_survival(model_name, features):
     """Preprocess input features and predict survival using the selected model."""
     try:
@@ -89,7 +99,7 @@ def predict_svm():
     features = get_request_features()
     return predict_survival("svm", features)
 
-# Define a route to generate a consensus prediction
+# -------------------------- Q2: Define a route to generate a consensus prediction----------------------------------------
 @app.route('/predict/consensus', methods=['GET'])
 def predict_consensus():
     """Generate a consensus prediction by averaging outputs from all models."""
@@ -130,6 +140,55 @@ def predict_consensus():
 
     except ValueError as ve:
         return jsonify({"error": f"Value Error: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+# -------------------------- Q3: Define a route to generate a weighted consensus prediction--------------------------------
+@app.route('/predict/weighted_consensus', methods=['GET'])
+def predict_weighted_consensus():
+    """Generate a weighted consensus prediction using dynamically adjusted model weights."""
+    try:
+        # Extract request parameters
+        features = get_request_features()
+        if features is None:
+            return jsonify({"error": "Missing or invalid input parameters"}), 400
+
+        # Convert input into a DataFrame for preprocessing
+        features_df = pd.DataFrame([features], columns=['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'embarked'])
+        
+        # Preprocess input features
+        features_scaled = preprocessor.transform(features_df)
+
+        # Collect individual model predictions
+        individual_predictions = {
+            model_name: int(model.predict(features_scaled)[0])  
+            for model_name, model in models.items()
+        }
+
+        # Compute weighted consensus prediction
+        model_preds = np.array(list(individual_predictions.values()))
+        weighted_prediction = int(round(np.average(model_preds, weights=weights)))
+
+        # Convert to human-readable format
+        survival = "Survived" if weighted_prediction == 1 else "Did not survive"
+
+        return jsonify({
+            "model": "weighted_consensus",
+            "weights": {model_name: weight for model_name, weight in zip(models.keys(), weights)},
+            "input_features": {
+                "pclass": features[0],
+                "sex": "male" if features[1] == 1 else "female",
+                "age": features[2],
+                "sibsp": features[3],
+                "parch": features[4],
+                "fare": features[5],
+                "embarked": {0: "C", 1: "Q", 2: "S"}.get(features[6], "Unknown")
+            },
+            "individual_predictions": individual_predictions,
+            "final_prediction": survival
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
