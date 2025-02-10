@@ -21,6 +21,11 @@ try:
 except FileNotFoundError:
     weights = np.array([1/3, 1/3, 1/3])  
 
+try:
+    with open(os.path.join(BASE_DIR, "data","pos_model_weights.json"), "r") as f:
+        pos_weights = np.array(list(json.load(f).values()))
+except FileNotFoundError:
+    pos_weights = np.array([1/3, 1/3, 1/3])  
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -175,7 +180,7 @@ def predict_weighted_consensus():
 
         return jsonify({
             "model": "weighted_consensus",
-            "weights": {model_name: weight for model_name, weight in zip(models.keys(), weights)},
+            "weights": weights.tolist(),
             "input_features": {
                 "pclass": features[0],
                 "sex": "male" if features[1] == 1 else "female",
@@ -192,6 +197,57 @@ def predict_weighted_consensus():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+# -------------------------- Q4: Define a route to generate a PoS weighted consensus prediction --------------------------------
+@app.route('/predict/pos_consensus', methods=['GET'])
+def predict_pos_consensus():
+    """Generate a Proof-of-Stake weighted consensus prediction using stored model weights."""
+    try:
+        # Extract request parameters
+        features = get_request_features()
+        if features is None:
+            return jsonify({"error": "Missing or invalid input parameters"}), 400
+
+        # Convert input into a DataFrame for preprocessing
+        features_df = pd.DataFrame([features], columns=['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'embarked'])
+        
+        # Preprocess input features
+        features_scaled = preprocessor.transform(features_df)
+
+
+        # Collect individual model predictions
+        individual_predictions = {
+            model_name: int(model.predict(features_scaled)[0])  # Convert np.int64 to Python int
+            for model_name, model in models.items()
+        }
+
+        # Compute PoS weighted consensus
+        model_preds = np.array(list(individual_predictions.values()))
+
+        # Weighted consensus prediction
+        pos_prediction = int(round(np.average(model_preds, weights=pos_weights)))
+
+        # Convert to human-readable format
+        survival = "Survived" if pos_prediction == 1 else "Did not survive"
+
+        return jsonify({
+            "model": "proof_of_stake_consensus",
+            "input_features": {
+                "pclass": features[0],
+                "sex": "male" if features[1] == 1 else "female",
+                "age": features[2],
+                "sibsp": features[3],
+                "parch": features[4],
+                "fare": features[5],
+                "embarked": {0: "C", 1: "Q", 2: "S"}.get(features[6], "Unknown")
+            },
+            "individual_predictions": individual_predictions,
+            "model_weights": pos_weights.tolist(), 
+            "final_prediction": survival
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Run the Flask app
 if __name__ == "__main__":

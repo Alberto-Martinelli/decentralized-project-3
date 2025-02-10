@@ -31,3 +31,13 @@ Accept: application/json
 ### Weighted Consensus Prediction 2
 GET http://localhost:5000/predict/weighted_consensus?pclass=3&sex=female&age=26&sibsp=0&parch=0&fare=7.925&embarked=S
 Accept: application/json
+
+# ------------------------- Q4 -------------------------
+
+### PoS Weighted Consensus Prediction 1
+GET http://localhost:5000/predict/pos_consensus?pclass=3&sex=male&age=22&sibsp=1&parch=0&fare=7.25&embarked=S
+Accept: application/json
+
+### PoS Weighted Consensus Prediction 2
+GET http://localhost:5000/predict/pos_consensus?pclass=3&sex=female&age=26&sibsp=0&parch=0&fare=7.925&embarked=S
+Accept: application/json
