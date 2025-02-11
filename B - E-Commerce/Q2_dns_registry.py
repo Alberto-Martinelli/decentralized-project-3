@@ -15,4 +15,4 @@ def get_server():
 if __name__ == '__main__':
     PORT = 4000  
     print(f"DNS Registry Server is running on http://localhost:{PORT}")
-    app.run(host="0.0.0.0", port=PORT, debug=True)
+    app.run(port=PORT, debug=True)
