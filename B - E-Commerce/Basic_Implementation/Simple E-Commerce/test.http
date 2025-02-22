@@ -1,0 +1,80 @@
+# ----------------------------------------- PRODUCTS ROUTES -----------------------------------------
+
+### Get all products
+GET http://localhost:5000/products
+Accept: application/json
+
+### Get products filtered by category
+GET http://localhost:5000/products?category=electronics
+Accept: application/json
+
+### Get products filtered by stock availability
+GET http://localhost:5000/products?inStock=true
+Accept: application/json
+
+### Get a specific product by ID
+GET http://localhost:5000/products/1
+Accept: application/json
+
+### Add a new product
+POST http://localhost:5000/products
+Content-Type: application/json
+
+{
+    "name": "Laptop",
+    "description": "High-end gaming laptop",
+    "price": 1200.99,
+    "category": "electronics",
+    "stock": 15
+}
+
+### Update a product (Change price)
+PUT http://localhost:5000/products/1
+Content-Type: application/json
+
+{
+    "price": 999.99
+}
+
+### Delete a product
+DELETE http://localhost:5000/products/1
+Accept: application/json
+
+
+# ----------------------------------------- ORDERS ROUTES -----------------------------------------
+
+### Create a new order
+POST http://localhost:5000/orders
+Content-Type: application/json
+
+{
+    "user_id": 123,
+    "items": [
+        { "product_id": 2, "quantity": 1 },
+        { "product_id": 3, "quantity": 2 }
+    ]
+}
+
+### Get all orders for a specific user
+GET http://localhost:5000/orders/123
+Accept: application/json
+
+
+# ----------------------------------------- CART ROUTES -----------------------------------------
+
+### Add a product to a user's cart
+POST http://localhost:5000/cart/123
+Content-Type: application/json
+
+{
+    "product_id": 2,
+    "quantity": 3
+}
+
+### Get user's cart contents
+GET http://localhost:5000/cart/123
+Accept: application/json
+
+### Remove an item from cart
+DELETE http://localhost:5000/cart/123/item/2
+Accept: application/json
