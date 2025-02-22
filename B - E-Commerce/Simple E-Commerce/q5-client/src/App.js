@@ -1,122 +1,33 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Container, Button, Table } from "react-bootstrap";
+import { Container, Button } from "react-bootstrap";
+import Products from "./components/Products";
+import Cart from "./components/Cart";
+import Orders from "./components/Orders";
+import { getApiUrl, placeOrder } from "./api";
 
-const DNS_URL = "http://localhost:4000/getServer";
-
-function App() {
-  console.log("✅ React App is Mounting...");
-
-  const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [apiUrl, setApiUrl] = useState("http://localhost:3001"); // Hardcoded for testing
+const App = () => {
   const userId = 1;
+  const [apiUrl, setApiUrl] = useState("http://localhost:3001");
+  const [view, setView] = useState("products");
 
   useEffect(() => {
-    console.log("Fetching API URL...");
-    fetch(DNS_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("✅ Fetched API URL:", data.server);
-        setApiUrl(`http://${data.server}`);
-        fetchProducts(`http://${data.server}`);
-        fetchCart(`http://${data.server}`);
-      })
-      .catch((err) => console.error("❌ Error fetching API URL:", err));
+    getApiUrl().then(setApiUrl);
   }, []);
 
-  const fetchProducts = async (url) => {
-    try {
-      console.log("Fetching products from:", url);
-      const response = await fetch(`${url}/products`);
-      const data = await response.json();
-      console.log("✅ Fetched Products:", data);
-      setProducts(data);
-    } catch (error) {
-      console.error("❌ Error fetching products:", error);
-    }
-  };
-
-  const fetchCart = async (url) => {
-    try {
-      console.log("Fetching cart from:", url);
-      const response = await fetch(`${url}/cart/${userId}`);
-      const data = await response.json();
-      console.log("✅ Fetched Cart:", data);
-      setCart(data);
-    } catch (error) {
-      console.error("❌ Error fetching cart:", error);
-    }
-  };
-
   return (
-    <Container className="mt-4">
-      <h1 style={{ color: "green" }}>React App Loaded</h1>
+    <Container>
+      <h1>E-Commerce Web App</h1>
       <p>API URL: {apiUrl}</p>
+      <Button onClick={() => setView("products")}>Products</Button>
+      <Button onClick={() => setView("cart")}>Cart</Button>
+      <Button onClick={() => setView("orders")}>Orders</Button>
 
-      <h2>Products ({products.length})</h2>
-      {products.length > 0 ? (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Description</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id}>
-                <td>{product.name}</td>
-                <td>{product.description}</td>
-                <td>${product.price}</td>
-                <td>{product.stock}</td>
-                <td>
-                  <Button onClick={() => console.log("Adding to cart:", product.id)} disabled={product.stock <= 0}>
-                    Add to Cart
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      ) : (
-        <p>No products available.</p>
-      )}
-
-      <h2>Cart ({cart.length})</h2>
-      {cart.length === 0 ? (
-        <p>Your cart is empty</p>
-      ) : (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Quantity</th>
-              <th>Price</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cart.map((item) => (
-              <tr key={item.id}>
-                <td>{item.name}</td>
-                <td>{item.quantity}</td>
-                <td>${item.price}</td>
-                <td>
-                  <Button variant="danger" onClick={() => console.log("Removing from cart:", item.id)}>
-                    Remove
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+      {view === "products" && <Products apiUrl={apiUrl} userId={userId} />}
+      {view === "cart" && <Cart apiUrl={apiUrl} userId={userId} />}
+      {view === "orders" && <Orders apiUrl={apiUrl} userId={userId} />}
     </Container>
   );
-}
+};
 
 export default App;

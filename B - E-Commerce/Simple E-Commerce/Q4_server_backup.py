@@ -213,6 +213,6 @@ def get_orders(user_id):
 
 
 if __name__ == '__main__':
-    PORT = 3001
+    PORT = 3002
     print(f"Server is running on http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT, debug=True)
