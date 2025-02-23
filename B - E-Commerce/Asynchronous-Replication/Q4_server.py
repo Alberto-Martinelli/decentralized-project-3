@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 import sqlite3
 from flask_cors import CORS
+import threading
+import time
+from pathlib import Path
 
 
 app = Flask(__name__)
-app = Flask(__name__)
-CORS(app)  
-
+CORS(app) 
 
 @app.after_request
 def apply_cors(response):
@@ -16,12 +17,35 @@ def apply_cors(response):
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
-DB_NAME = "B - E-Commerce/Simple E-Commerce/ecommerce.db"
+# Define primary and mirrored databases
+script_dir = Path(__file__).parent.absolute()
+PRIMARY_DB = script_dir / "ecommerce_primary.db"
+MIRROR_DB = script_dir / "ecommerce_mirror.db"
+SYNC_INTERVAL = 5  # seconds
 
-def db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row  
+
+def db_connection(db_name):
+    conn = sqlite3.connect(db_name, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     return conn
+
+primary_conn = db_connection(PRIMARY_DB)
+replica_conn = db_connection(MIRROR_DB)
+
+# ----------------------------------------- ASYNC REPLICATION -----------------------------------------
+# def replicate():
+#     while True:
+#         try:
+#             # Open connections to primary and replica databases
+#             with sqlite3.connect(PRIMARY_DB) as primary_conn, sqlite3.connect(MIRROR_DB) as replica_conn:
+#                 primary_conn.backup(replica_conn)
+#                 print("Replication successful!")
+#         except Exception as e:
+#             print(f"Replication error: {e}")
+
+#         time.sleep(SYNC_INTERVAL)  # Wait before next sync
+
+# threading.Thread(target=replicate, daemon=True).start()
 
 # ----------------------------------------- PRODUCTS ROUTES -----------------------------------------
 
@@ -31,8 +55,7 @@ def get_products():
     category = request.args.get('category')
     in_stock = request.args.get('inStock')
 
-    conn = db_connection()
-    cursor = conn.cursor()
+    cursor = primary_conn.cursor()
 
     query = "SELECT * FROM products"
     params = []
@@ -46,18 +69,17 @@ def get_products():
 
     cursor.execute(query, params)
     products = cursor.fetchall()
-    conn.close()
+    primary_conn.close()
 
     return jsonify([dict(row) for row in products])
 
 # GET /products/:id - Retrieve a single product by ID
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product_by_id(product_id):
-    conn = db_connection()
-    cursor = conn.cursor()
+    cursor = replica_conn.cursor()
     cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
     product = cursor.fetchone()
-    conn.close()
+    replica_conn.close()
 
     if product:
         return jsonify(dict(product))

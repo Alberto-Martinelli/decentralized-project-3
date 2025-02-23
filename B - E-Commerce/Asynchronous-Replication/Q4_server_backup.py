@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import sqlite3
 from flask_cors import CORS
+from pathlib import Path
 
 app = Flask(__name__)
 CORS(app)  
@@ -14,8 +15,10 @@ def apply_cors(response):
     return response
 
 # Define primary and mirrored databases
-PRIMARY_DB = "ecommerce_primary.db"
-MIRROR_DB = "ecommerce_mirror.db"
+script_dir = Path(__file__).parent.absolute()
+PRIMARY_DB = script_dir / "ecommerce_primary.db"
+MIRROR_DB = script_dir / "ecommerce_mirror.db"
+
 
 def db_connection(db_path):
     """Create a connection to the given database."""
@@ -46,6 +49,11 @@ def execute_write(query, params=()):
         return False
 
 # ----------------------------------------- PRODUCTS ROUTES -----------------------------------------
+
+# GET /test-connection - Test the connection to the server
+@app.route('/test-connection', methods=['GET'])
+def test_connection():
+    return jsonify({"message": "Connection successful"}), 200
 
 # GET /products - List all products (with optional filtering)
 @app.route('/products', methods=['GET'])
