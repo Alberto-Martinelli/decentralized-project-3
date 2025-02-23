@@ -2,11 +2,8 @@ from flask import Flask, request, jsonify
 import sqlite3
 from flask_cors import CORS
 
-
 app = Flask(__name__)
-app = Flask(__name__)
-CORS(app)  
-
+CORS(app)
 
 @app.after_request
 def apply_cors(response):
@@ -25,32 +22,15 @@ def db_connection():
 
 # ----------------------------------------- PRODUCTS ROUTES -----------------------------------------
 
-# GET /products - List all products (with optional filtering)
 @app.route('/products', methods=['GET'])
 def get_products():
-    category = request.args.get('category')
-    in_stock = request.args.get('inStock')
-
     conn = db_connection()
     cursor = conn.cursor()
-
-    query = "SELECT * FROM products"
-    params = []
-
-    if category:
-        query += " WHERE category = ?"
-        params.append(category)
-    
-    if in_stock and in_stock.lower() == 'true':
-        query += " AND stock > 0" if category else " WHERE stock > 0"
-
-    cursor.execute(query, params)
+    cursor.execute("SELECT * FROM products")
     products = cursor.fetchall()
     conn.close()
+    return jsonify([dict(product) for product in products])
 
-    return jsonify([dict(row) for row in products])
-
-# GET /products/:id - Retrieve a single product by ID
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product_by_id(product_id):
     conn = db_connection()
@@ -58,12 +38,8 @@ def get_product_by_id(product_id):
     cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
     product = cursor.fetchone()
     conn.close()
+    return jsonify(dict(product)) if product else jsonify({"error": "Product not found"}), 404
 
-    if product:
-        return jsonify(dict(product))
-    return jsonify({"error": "Product not found"}), 404
-
-# POST /products - Add a new product
 @app.route('/products', methods=['POST'])
 def add_product():
     data = request.get_json()
@@ -83,56 +59,64 @@ def add_product():
 
     return jsonify({"message": "Product added successfully"}), 201
 
-# PUT /products/:id - Update product details
 @app.route('/products/<int:product_id>', methods=['PUT'])
 def update_product(product_id):
     data = request.get_json()
-    update_fields = []
-
-    for field in ["name", "description", "price", "category", "stock"]:
-        if field in data:
-            update_fields.append(f"{field} = ?")
+    update_fields = {key: data[key] for key in ["name", "description", "price", "category", "stock"] if key in data}
 
     if not update_fields:
         return jsonify({"error": "No fields to update"}), 400
 
-    update_query = f"UPDATE products SET {', '.join(update_fields)} WHERE id = ?"
-    values = list(data.values()) + [product_id]
+    query = "UPDATE products SET " + ", ".join(f"{key} = ?" for key in update_fields.keys()) + " WHERE id = ?"
+    values = list(update_fields.values()) + [product_id]
 
     conn = db_connection()
     cursor = conn.cursor()
-    cursor.execute(update_query, values)
+    cursor.execute(query, values)
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Product updated successfully"})
 
-# DELETE /products/:id - Remove a product
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
     conn = db_connection()
     cursor = conn.cursor()
+
+    cursor.execute("SELECT 1 FROM order_items WHERE product_id = ?", (product_id,))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({"error": "Cannot delete a product that is part of an order"}), 400
+
+    cursor.execute("SELECT 1 FROM cart WHERE product_id = ?", (product_id,))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({"error": "Cannot delete a product that is in a user's cart"}), 400
+
     cursor.execute("DELETE FROM products WHERE id = ?", (product_id,))
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Product deleted successfully"})
 
-
 # ----------------------------------------- CART ROUTES -----------------------------------------
 
-# POST /cart/:userId - Add product to cart
 @app.route('/cart/<int:user_id>', methods=['POST'])
 def add_to_cart(user_id):
     data = request.get_json()
     product_id = data.get("product_id")
     quantity = data.get("quantity")
 
-    if not product_id or not quantity:
-        return jsonify({"error": "Missing product_id or quantity"}), 400
+    if not product_id or not quantity or quantity <= 0:
+        return jsonify({"error": "Invalid product_id or quantity"}), 400
 
     conn = db_connection()
     cursor = conn.cursor()
+
+    cursor.execute("SELECT stock FROM products WHERE id = ?", (product_id,))
+    product = cursor.fetchone()
+    if not product:
+        return jsonify({"error": "Product not found"}), 400
 
     cursor.execute("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?);", (user_id, product_id, quantity))
     conn.commit()
@@ -140,23 +124,22 @@ def add_to_cart(user_id):
 
     return jsonify({"message": "Product added to cart"})
 
-# GET /cart/:userId - Retrieve user cart
 @app.route('/cart/<int:user_id>', methods=['GET'])
 def get_cart(user_id):
     conn = db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT c.id, p.name, c.quantity, p.price 
-        FROM cart c JOIN products p ON c.product_id = p.id
+        SELECT c.id, p.name, c.quantity, p.price, 
+               (p.price * c.quantity) AS total_item_price
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id
         WHERE c.user_id = ?;
     """, (user_id,))
-    
     cart_items = cursor.fetchall()
     conn.close()
 
     return jsonify([dict(item) for item in cart_items])
 
-# DELETE /cart/:userId/item/:productId - Remove item from cart
 @app.route('/cart/<int:user_id>/item/<int:product_id>', methods=['DELETE'])
 def remove_from_cart(user_id, product_id):
     conn = db_connection()
@@ -164,13 +147,10 @@ def remove_from_cart(user_id, product_id):
     cursor.execute("DELETE FROM cart WHERE user_id = ? AND product_id = ?;", (user_id, product_id))
     conn.commit()
     conn.close()
-
     return jsonify({"message": "Product removed from cart"})
-
 
 # ----------------------------------------- ORDERS ROUTES -----------------------------------------
 
-# POST /orders - Create a new order
 @app.route('/orders', methods=['POST'])
 def create_order():
     data = request.get_json()
@@ -183,24 +163,20 @@ def create_order():
     conn = db_connection()
     cursor = conn.cursor()
 
-    # Calculate total price
-    total_price = sum(item["price"] * item["quantity"] for item in cart_items)
-
-    # Create order
+    total_price = sum(item["quantity"] * item["price"] for item in cart_items)
     cursor.execute("INSERT INTO orders (user_id, total_price) VALUES (?, ?);", (user_id, total_price))
     order_id = cursor.lastrowid
 
-    # Insert order items
     for item in cart_items:
         cursor.execute("INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, ?);",
                        (order_id, item["product_id"], item["quantity"]))
+        cursor.execute("UPDATE products SET stock = stock - ? WHERE id = ?", (item["quantity"], item["product_id"]))
 
     conn.commit()
     conn.close()
 
     return jsonify({"message": "Order created successfully", "order_id": order_id})
 
-# GET /orders/:userId - Get orders for a user
 @app.route('/orders/<int:user_id>', methods=['GET'])
 def get_orders(user_id):
     conn = db_connection()
@@ -208,9 +184,7 @@ def get_orders(user_id):
     cursor.execute("SELECT * FROM orders WHERE user_id = ?;", (user_id,))
     orders = cursor.fetchall()
     conn.close()
-
     return jsonify([dict(order) for order in orders])
-
 
 if __name__ == '__main__':
     PORT = 3001
