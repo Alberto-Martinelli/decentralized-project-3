@@ -14,6 +14,20 @@ Participants should form groups of 3 to 5 and select a simple dataset, such as I
 
 **Q1:** Develop diverse predictive models targeting the selected dataset. Each group member should create a distinct model.
 
+
+```python  
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+
+
+app.run(host="0.0.0.0")
+```
+
 - Evaluate the accuracy and performance of your model.
 - Adapt your model for API access. This API should include a GET `predict` route that accepts model arguments and returns a prediction.
 - Determine a standardized API response format within your group.
@@ -158,6 +172,7 @@ Asynchronous replication employs a queue or buffer system. Once the primary stor
 
 Q8 - Adapt the implementation to use asynchronous replication. Do the implementation in a new folder named `Asynchronous-Replication`.
 
----
 
-This version corrects spelling mistakes (e.g., "postgress" to "PostgreSQL", "inderact" to "interact"), clarifies instructions, and makes minor grammatical adjustments for readability.
+Q7-bis: implement synchronous mirroring using two differents database structures
+
+Q8-bis: implement asynchronous replication using two different database structure
